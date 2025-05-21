@@ -1,190 +1,225 @@
 import 'package:catalift_task/common/model/mentor_model.dart';
-import 'package:catalift_task/ui/widgets/mentor_card.dart';
+import 'package:catalift_task/ui/widgets/tab_bar.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+
+import '../widgets/mentor_card.dart';
 
 class MentorsScreen extends StatefulWidget {
-  const MentorsScreen({
-    super.key,
-  });
+  const MentorsScreen({super.key});
 
   @override
   State<MentorsScreen> createState() => _MentorsScreenState();
 }
 
-class _MentorsScreenState extends State<MentorsScreen> {
-  int selectedTab = 1; // 0: My Mentors, 1: Explore
+class _MentorsScreenState extends State<MentorsScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  int _selectedIndex = 0;
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
 
-  // Sample mentor list
-  final List<Mentor> mentors = [
-    Mentor(
-      name: "Gaurav Samant",
-      sector: "IT Sector",
-      experience: "4 years",
-      domain: "Business Administration",
-      reviews: 175,
-      description:
-          "Strategy Manager @CEO Office | Ex-eBay & L&T | MDI Gurgaon . ESCP Europe | 32+ National Case Comps Podiums",
-      compatibility: 98,
-      imageUrl: 'assets/images/profile.png',
-    ),
-    Mentor(
-      name: "Gaurav Samant",
-      sector: "IT Sector",
-      experience: "4 years",
-      domain: "Business Administration",
-      reviews: 175,
-      description:
-          "Strategy Manager @CEO Office | Ex-eBay & L&T | MDI Gurgaon . ESCP Europe | 32+ National Case Comps Podiums",
-      compatibility: 82,
-      imageUrl: 'assets/images/profile.png',
-    ),
-    // Add more mentors if needed
-  ];
+  List<Mentor> _myMentors = [];
+  List<Mentor> _exploreMentors = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+
+    // Initialize dummy data
+    _myMentors =
+        dummyMentors.where((mentor) => mentor.compatibility >= 80).toList();
+    _exploreMentors =
+        dummyMentors.where((mentor) => mentor.compatibility < 80).toList();
+
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    setState(() {
+      _searchQuery = _searchController.text.toLowerCase();
+    });
+  }
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
+  List<Mentor> _getFilteredMentors(List<Mentor> mentors) {
+    if (_searchQuery.isEmpty) {
+      return mentors;
+    }
+
+    return mentors
+        .where((mentor) => mentor.name.toLowerCase().contains(_searchQuery))
+        .toList();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final filteredMyMentors = _getFilteredMentors(_myMentors);
+    final filteredExploreMentors = _getFilteredMentors(_exploreMentors);
+
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0D0140),
-        title: Row(
+        backgroundColor: const Color(0xFF0A0066),
+        title: Text(
+          'CATALIFT',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.2,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.person_outline, color: Colors.white),
+            onPressed: () {},
+          ),
+          IconButton(
+            icon: const Icon(Icons.notifications_none_outlined,
+                color: Colors.white),
+            onPressed: () {},
+          ),
+          IconButton(
+            icon: const Icon(Icons.chat_bubble_outline, color: Colors.white),
+            onPressed: () {},
+          ),
+        ],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'CATA',
-              style: GoogleFonts.poppins(
-                fontWeight: FontWeight.w600,
-                fontSize: 20,
-                color: Colors.white,
+            SizedBox(
+              height: 10,
+            ),
+            const Text(
+              'Mentors',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF0A0066),
               ),
             ),
-            Text(
-              'LIFT',
-              style: GoogleFonts.poppins(
-                fontWeight: FontWeight.w300,
-                fontSize: 20,
-                color: Colors.white,
+            SizedBox(
+              height: 10,
+            ),
+            CustomTabBar(controller: _tabController),
+            SizedBox(
+              height: 15,
+            ),
+            Container(
+              decoration: BoxDecoration(
+                  // color: const Color(0xFFF0F0F5),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: Colors.grey.shade300,
+                    width: 1,
+                  )),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search',
+                  hintStyle: TextStyle(color: Colors.grey.shade400),
+                  prefixIcon: Icon(Icons.search, color: Colors.grey.shade400),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+            SizedBox(
+              height: 20,
+            ),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  // My Mentors Tab
+                  filteredMyMentors.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'No mentors found',
+                            style: TextStyle(fontSize: 16, color: Colors.grey),
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: filteredMyMentors.length,
+                          itemBuilder: (context, index) {
+                            return MentorCard(mentor: filteredMyMentors[index]);
+                          },
+                        ),
+
+                  filteredExploreMentors.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'No mentors found',
+                            style: TextStyle(fontSize: 16, color: Colors.grey),
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: filteredExploreMentors.length,
+                          itemBuilder: (context, index) {
+                            return MentorCard(
+                                mentor: filteredExploreMentors[index]);
+                          },
+                        ),
+                ],
               ),
             ),
           ],
         ),
-        actions: const [
-          Icon(Icons.person, color: Colors.white),
-          SizedBox(width: 16),
-          Icon(Icons.notifications_none, color: Colors.white),
-          SizedBox(width: 16),
-          Icon(Icons.chat_bubble_outline, color: Colors.white),
-          SizedBox(width: 12),
-        ],
-      ),
-      body: Column(
-        children: [
-          const SizedBox(height: 20),
-
-          // Tabs
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() => selectedTab = 0),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        color: selectedTab == 0
-                            ? const Color(0xFF0D0140)
-                            : Colors.grey.shade200,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Center(
-                        child: Text(
-                          'My Mentors',
-                          style: TextStyle(
-                            color:
-                                selectedTab == 0 ? Colors.white : Colors.black,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() => selectedTab = 1),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        color: selectedTab == 1
-                            ? const Color(0xFF0D0140)
-                            : Colors.grey.shade200,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Center(
-                        child: Text(
-                          'Explore',
-                          style: TextStyle(
-                            color:
-                                selectedTab == 1 ? Colors.white : Colors.black,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Search Box
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Search',
-                prefixIcon: const Icon(Icons.search),
-                filled: true,
-                fillColor: Colors.grey.shade100,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Mentor list
-          Expanded(
-            child: ListView.builder(
-              itemCount: mentors.length,
-              itemBuilder: (context, index) {
-                return MentorCard(mentor: mentors[index]);
-              },
-            ),
-          ),
-        ],
       ),
 
-      // Bottom Navigation
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 1,
-        selectedItemColor: Colors.white,
-        unselectedItemColor: Colors.white54,
-        backgroundColor: const Color(0xFF0D0140),
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.explore), label: 'Explore Mentors'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.menu_book), label: 'Courses'),
-        ],
+      // Bottom Navigation Bar
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF0A0066),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.2),
+              spreadRadius: 0,
+              blurRadius: 10,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          items: const <BottomNavigationBarItem>[
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home),
+              label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.explore),
+              label: 'Explore Mentors',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.book),
+              label: 'Courses',
+            ),
+          ],
+          currentIndex: _selectedIndex,
+          selectedItemColor: Colors.white,
+          selectedFontSize: 16,
+          unselectedItemColor: Colors.white,
+          onTap: _onItemTapped,
+          backgroundColor: const Color(0xFF0A0066),
+          elevation: 10,
+        ),
       ),
     );
   }
